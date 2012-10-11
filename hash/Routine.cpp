@@ -8,9 +8,9 @@ using namespace neuria::hash;
 
 int main(int argc, char* argv[])
 {
-	std::cout << CalcRoutineStr(utl::String2ByteArray("string")) << std::endl;
-	std::cout << CalcRoutineStr(utl::String2ByteArray("strinh")) << std::endl;
-	std::cout << CalcRoutineStr(utl::String2ByteArray("")) << std::endl;
+	std::cout << CalcHashStr(utility::String2ByteArray("string")) << std::endl;
+	std::cout << CalcHashStr(utility::String2ByteArray("strinh")) << std::endl;
+	std::cout << CalcHashStr(utility::String2ByteArray("")) << std::endl;
     return 0;
 }
 

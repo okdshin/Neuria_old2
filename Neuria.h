@@ -3,7 +3,7 @@
 #include "ByteArray.h"
 #include "network/Network.h"
 #include "utility/Utility.h"
-#include "hash/Routine.h"
+#include "hash/Hash.h"
 
 
 namespace nr
