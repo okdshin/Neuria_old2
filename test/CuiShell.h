@@ -40,16 +40,17 @@ public:
 					this->CallFunc(parsed_list);
 				}
 				else{
-					throw "invalid";
+					throw NotRegisteredFuncCalledException();
 				}
 			}
-			catch(...){
-				this->os << "\"" << command << "\" is invalid command." << std::endl;	
+			catch(const NotRegisteredFuncCalledException&){
+				this->os << "\"" << command << "\" is invalid command." << std::endl;
 			}
 		}
 	}
 
 private:
+	class NotRegisteredFuncCalledException{};
 	auto CallFunc(const ArgList& arg_list) -> void {
 		std::get<1>(this->func_dict[arg_list.at(0)])(arg_list);
 	}

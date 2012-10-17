@@ -118,7 +118,7 @@ private:
 			DoOnReceive();
 		}
 		else if(this->sock.is_open()){ //peer socket closed
-			this->os << "on receive error. maybe peer socket close." << std::endl;
+			this->os << "maybe peer socket close." << std::endl;
 			this->Close();	
 		}
 		else{ //self socket closed
