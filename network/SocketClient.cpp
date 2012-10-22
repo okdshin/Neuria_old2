@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
 			session_pool->Erase(session);
 		},
 		[&service, &session_pool](const ByteArray& byte_array){ //broadcast
-			Broadcast(session_pool, byte_array);
+			Broadcast(session_pool, byte_array, [](Session::Pointer){});
 			//Send(client, "127.0.0.1", 54321, utl::String2ByteArray("hello"));
 		},
 		[&session_pool](){ // close 

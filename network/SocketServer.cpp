@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 	server->SetOnReceiveFunc(
 		[](Session::Pointer session, const ByteArray& byte_array){ 
 			std::cout << "on receive from accepted session:" 
-				<< utl::ByteArray2String(byte_array) << std::endl;
+				<< utility::ByteArray2String(byte_array) << std::endl;
 		}
 	);
 	server->SetOnCloseFunc(

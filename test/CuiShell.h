@@ -46,6 +46,9 @@ public:
 			catch(const NotRegisteredFuncCalledException&){
 				this->os << "\"" << command << "\" is invalid command." << std::endl;
 			}
+			catch(const std::out_of_range&){
+				this->os << "too few argument. please check." << std::endl;	
+			}
 		}
 	}
 
