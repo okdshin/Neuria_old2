@@ -11,6 +11,7 @@
 #include "Client.h"
 #include "../ByteArray.h"
 #include "NodeId.h"
+#include "ErrorCode.h"
 
 namespace neuria{
 namespace network{
@@ -30,6 +31,7 @@ private:
 	
 	auto DoConnect(const NodeId& node_id, 
 			OnConnectFunc on_connect_func, 
+			OnFailedConnectFunc on_failed_connect_func, 
 			Session::OnReceiveFunc on_receive_func, 
 			Session::OnCloseFunc on_close_func) -> void {
 		this->os << "connectiong..." << std::endl;
@@ -38,12 +40,11 @@ private:
 
 		auto parsed_id = std::vector<std::string>();
 		boost::split(parsed_id, node_id, boost::is_any_of("/"));
-		assert(parsed_id.size() == 2);
+		assert("invalid NodeId format" && parsed_id.size() == 2);
 		auto query = boost::asio::ip::tcp::resolver::query(
 			parsed_id.at(0), parsed_id.at(1));
 		
 		auto endpoint_iter = resolver.resolve(query);
-
 		auto new_session = SocketSession::Create(
 			this->service, this->buffer_size, on_receive_func, on_close_func, 
 			this->os);
@@ -55,10 +56,12 @@ private:
 		boost::asio::async_connect(
 			new_session->GetSocketRef(), endpoint_iter, boost::bind(
 				&SocketClient::OnConnect, this->shared_from_this(), 
-				on_connect_func, new_session, boost::asio::placeholders::error));	
+				on_connect_func, on_failed_connect_func, new_session, boost::asio::placeholders::error));	
 	}
 
-	auto OnConnect(OnConnectFunc on_connect_func, Session::Pointer session, 
+	auto OnConnect(OnConnectFunc on_connect_func, 
+			OnFailedConnectFunc on_failed_connect_func, 
+			Session::Pointer session, 
 			const boost::system::error_code& error_code) -> void {
 		if(!error_code){
 			on_connect_func(session);
@@ -66,6 +69,7 @@ private:
 		}
 		else{
 			this->os << "connect failure. " << error_code.message()  << std::endl;	
+			on_failed_connect_func(ErrorCode(error_code));
 		}
 	}
 	

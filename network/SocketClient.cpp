@@ -9,6 +9,7 @@ using namespace neuria::network;
 auto SocketClientTestCuiApp(boost::asio::io_service& service, 
 		SocketClient::Pointer client, 
 		SocketClient::OnConnectFunc on_connect_func, 
+		SocketClient::OnFailedConnectFunc on_failed_connect_func, 
 		Session::OnReceiveFunc on_receive_func,
 		Session::OnCloseFunc on_close_func,
 		boost::function<void (const ByteArray&)> broadcast_func,
@@ -37,7 +38,7 @@ auto SocketClientTestCuiApp(boost::asio::io_service& service,
 				const auto port = test::GetInput<int>("port?:");	
 				std::cout << hostname << ":" << port << std::endl;
 				client->Connect(CreateSocketNodeId(hostname, port), 
-					on_connect_func, on_receive_func, on_close_func);
+					on_connect_func, on_failed_connect_func, on_receive_func, on_close_func);
 			}
 			else if(command == "broadcast"){
 				const auto message = test::GetInput<std::string>("message?:");
@@ -73,6 +74,9 @@ int main(int argc, char* argv[])
 		[&session_pool](Session::Pointer session){  // on_connect
 			std::cout << "on_connect!!!" << std::endl; 
 			session_pool->Add(session);
+		}, 
+		[](const ErrorCode& error_code){  // on_failed connect
+			std::cout << "on_failed_connect!!! :"  << ToString(error_code) << std::endl; 
 		}, 
 		[](Session::Pointer session, const ByteArray& byte_array){ // on_receive
 			std::cout << "on_receive!!!" << std::endl; 

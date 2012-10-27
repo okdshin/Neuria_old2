@@ -6,6 +6,7 @@
 #include "NodeId.h"
 #include "Session.h"
 #include "SessionPool.h"
+#include "ErrorCode.h"
 
 namespace neuria{
 namespace network{
@@ -14,47 +15,59 @@ class Client{
 public:
 	using Pointer = boost::shared_ptr<Client>;
 	using OnConnectFunc = boost::function<void (Session::Pointer)>;
+	using OnFailedConnectFunc = boost::function<void (const ErrorCode&)>;
 
 	virtual auto Connect(const NodeId& node_id, 
 			OnConnectFunc on_connect_func, 
+			OnFailedConnectFunc on_failed_connect_func,
 			Session::OnReceiveFunc on_receive_func, 
 			Session::OnCloseFunc on_close_func) -> void {
-		this->DoConnect(node_id, on_connect_func, on_receive_func, on_close_func);		
+		this->DoConnect(node_id, on_connect_func, on_failed_connect_func, 
+			on_receive_func, on_close_func);	
 	}
 
     virtual ~Client(){}
 	
 private:
 	
-	virtual auto DoConnect(const NodeId& node_id, OnConnectFunc on_connect_func, 
+	virtual auto DoConnect(const NodeId& node_id, 
+		OnConnectFunc on_connect_func, OnFailedConnectFunc on_failed_connect_func,
 		Session::OnReceiveFunc on_receive_func, Session::OnCloseFunc on_close_func) -> void = 0;
 };
 
-auto Connect(Client::Pointer client, const NodeId& node_id, SessionPool::Pointer pool, 
+auto Connect(Client::Pointer client, 
+		const NodeId& node_id, SessionPool::Pointer pool, 
+		Client::OnFailedConnectFunc on_failed_connect_func, 
 		Session::OnReceiveFunc on_receive_func) -> void {
 	client->Connect(node_id, 
 		[pool](Session::Pointer session){ pool->Add(session); }, 
+		on_failed_connect_func,
 		on_receive_func, 
 		[pool](Session::Pointer session){ pool->Erase(session); });	
 }
 
 auto Communicate(Client::Pointer client, const NodeId& node_id, 
+		Client::OnFailedConnectFunc on_failed_connect_func, 
 		const ByteArray& byte_array, Session::OnReceiveFunc on_receive_func,
 		Session::OnSendFinishedFunc on_send_finished_func) -> void {
 	client->Connect(node_id, 
-		[byte_array, on_send_finished_func](Session::Pointer session){ session->Send(byte_array, on_send_finished_func); }, 
+		[byte_array, on_send_finished_func](Session::Pointer session){ 
+			session->Send(byte_array, on_send_finished_func); }, 
+		on_failed_connect_func,
 		on_receive_func,
 		[](Session::Pointer){});	
 }
 
-auto Send(Client::Pointer client, const NodeId& node_id, 
-		const ByteArray& byte_array) -> void {
+auto Send(Client::Pointer client, 
+		const NodeId& node_id, const ByteArray& byte_array,
+		Client::OnFailedConnectFunc on_failed_connect_func) -> void {
 	client->Connect(node_id,
 		[byte_array](Session::Pointer session){
 			session->Send(byte_array, 
 				[](Session::Pointer session){ session->Close(); }
 			);
 		}, 
+		on_failed_connect_func,
 		[](Session::Pointer, const ByteArray&){}, 
 		[](Session::Pointer){});				
 }
