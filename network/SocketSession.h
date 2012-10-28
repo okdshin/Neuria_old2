@@ -63,7 +63,8 @@ public:
 	auto Send(const ByteArray& byte_array,
 			Session::OnSendFinishedFunc on_send_finished_func) -> void {
 		assert(this->sock.is_open());
-		this->os << "send" << std::endl;
+		this->os << "send:\n\"" << utility::ByteArray2String(byte_array) 
+			<< "\"" << std::endl;
 		bool is_empty = this->send_byte_array_queue.empty();
 		this->send_byte_array_queue.push_back(byte_array);
 		if(is_empty) { //start new
@@ -109,7 +110,8 @@ private:
 				std::back_inserter(this->received_byte_array));
 			
 			if(bytes_transferred < this->part_of_array.size()){
-				this->os << "received." << std::endl;
+				this->os << "received:\n\"" << 
+					utility::ByteArray2String(this->received_byte_array) << "\"" << std::endl;
 				this->sock.get_io_service().dispatch(boost::bind(
 					this->on_receive_func, this->shared_from_this(), this->received_byte_array));
 				this->received_byte_array.resize(0);
