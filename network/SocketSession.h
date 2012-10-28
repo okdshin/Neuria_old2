@@ -110,8 +110,10 @@ private:
 				std::back_inserter(this->received_byte_array));
 			
 			if(bytes_transferred < this->part_of_array.size()){
-				this->os << "received:\n\"" << 
-					utility::ByteArray2String(this->received_byte_array) << "\"" << std::endl;
+				this->os << "received:" << this->received_byte_array.size() 
+					<< " bytes transffered\n\"" 
+					<< utility::ByteArray2String(this->received_byte_array) 
+					<< "\"" << std::endl;
 				this->sock.get_io_service().dispatch(boost::bind(
 					this->on_receive_func, this->shared_from_this(), this->received_byte_array));
 				this->received_byte_array.resize(0);
