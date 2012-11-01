@@ -6,6 +6,7 @@
 #include <boost/asio.hpp>
 #include "NodeId.h"
 #include "../ByteArray.h"
+#include "../utility/Utility.h"
 
 namespace neuria{
 namespace network{
@@ -19,11 +20,31 @@ public:
 	using OnCloseFunc = boost::function<void (Pointer)>;
 	using OnSendFinishedFunc = boost::function<void (Pointer)>;
 
-	virtual auto GetNodeId() -> NodeId = 0;
-	virtual auto StartReceive() -> void = 0;
-	virtual auto Send(const ByteArray& byte_array, 
+	auto GetNodeId() -> NodeId {
+		return DoGetNodeId();	
+	}
+
+	auto StartReceive() -> void {
+		DoStartReceive();	
+	}
+	
+	auto Send(const ByteArray& byte_array, 
+			OnSendFinishedFunc on_send_finished_func) -> void {
+		std::cout << "send:\n\"" << utility::ByteArray2String(byte_array) 
+			<< "\"" << std::endl;
+		DoSend(byte_array, on_send_finished_func);		
+	}
+ 	
+	auto Close() -> void {
+		DoClose();	
+	}
+
+private:
+	virtual auto DoGetNodeId() -> NodeId = 0;
+	virtual auto DoStartReceive() -> void = 0;
+	virtual auto DoSend(const ByteArray& byte_array, 
 		OnSendFinishedFunc on_send_finished_func) -> void = 0;
- 	virtual auto Close() -> void = 0;
+ 	virtual auto DoClose() -> void = 0;
 };
 
 auto Send(Session::Pointer session, const ByteArray& byte_array) -> void {

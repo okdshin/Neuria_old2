@@ -11,6 +11,7 @@
 #include <boost/enable_shared_from_this.hpp>
 #include "Session.h"
 #include "SocketRoutine.h"
+#include "SocketSessionHeader.h"
 
 namespace neuria{
 namespace network{
@@ -44,7 +45,8 @@ public:
 		return this->sock;
 	}
 
-	auto GetNodeId() -> NodeId {
+private: //over ridden
+	auto DoGetNodeId() -> NodeId {
 		try{
 			return CreateSocketNodeId(
 				GetRemoteAddressStr(this->shared_from_this()), 
@@ -55,27 +57,25 @@ public:
 		}
 	}
 
-	auto StartReceive() -> void {
+	auto DoStartReceive() -> void {
 		this->os << "start receive" << std::endl;
-		DoOnReceive();
+		HandlOnReceiveHeader();
 	}
 
-	auto Send(const ByteArray& byte_array,
+	auto DoSend(const ByteArray& byte_array,
 			Session::OnSendFinishedFunc on_send_finished_func) -> void {
 		assert(this->sock.is_open());
-		this->os << "send:\n\"" << utility::ByteArray2String(byte_array) 
-			<< "\"" << std::endl;
 		bool is_empty = this->send_byte_array_queue.empty();
 		this->send_byte_array_queue.push_back(byte_array);
 		if(is_empty) { //start new
-			this->DoOnSend(on_send_finished_func);
+			this->HandlOnSend(on_send_finished_func);
 		}
 	}
 	
-	auto Close() -> void {
+	auto DoClose() -> void {
 		assert(this->sock.is_open());
 		this->sock.get_io_service().post(
-			boost::bind(&SocketSession::DoClose, shared_from_this()));
+			boost::bind(&SocketSession::HandlClose, shared_from_this()));
 	}
 
 private:
@@ -87,12 +87,11 @@ private:
 			part_of_array(buffer_size), received_byte_array(), //on_send_strand(service), 
 			os(os){}
 
-	auto DoOnReceive() -> void {
-		//this->os << "do on receive" << std::endl;
+	auto HandlOnReceiveHeader() -> void {
 		this->sock.async_read_some(
 			boost::asio::buffer(part_of_array),
 			boost::bind(
-				&SocketSession::OnReceive, 
+				&SocketSession::OnReceiveHeader, 
 				shared_from_this(),
 				boost::asio::placeholders::error,
 				boost::asio::placeholders::bytes_transferred
@@ -101,25 +100,101 @@ private:
 
 	}
 
-	auto OnReceive(
-		const boost::system::error_code& error_code, std::size_t bytes_transferred)
-	-> void {
-		//this->os << "on receive" << std::endl;
+	auto OnReceiveHeader(const boost::system::error_code& error_code, 
+			std::size_t bytes_transferred) -> void {
+		auto temp_part_of_array = ByteArray();
+		std::copy(this->part_of_array.begin(), 
+			this->part_of_array.begin() + bytes_transferred, 
+			std::back_inserter(temp_part_of_array));
 		if(!error_code){
+			this->os << "partly received(header): \"" 
+				<< std::string(this->part_of_array.begin(), this->part_of_array.begin()+bytes_transferred) << "\"\n" 
+				<< temp_part_of_array
+				<< std::endl;
 			std::copy(part_of_array.begin(), part_of_array.begin()+bytes_transferred, 
 				std::back_inserter(this->received_byte_array));
-			
-			if(bytes_transferred < this->part_of_array.size()){
-				this->os << "received:" << this->received_byte_array.size() 
+			if(SocketSessionHeader::IsEnableParse(this->received_byte_array)){
+				this->header = SocketSessionHeader::Parse(received_byte_array);
+				this->os << "header: " << this->header << std::endl;
+				OnReceiveBodyProxy(error_code, bytes_transferred);
+			}
+			else{
+				HandlOnReceiveHeader();	
+			}
+		}
+		else if(this->sock.is_open()){ //peer socket closed
+			this->os << "maybe peer socket close." << std::endl;
+			this->Close();	
+		}
+		else{ //self socket closed
+			this->os << "receiving stop" << std::endl;
+		}
+	}
+	
+	auto HandlOnReceiveBody() -> void {
+		this->sock.async_read_some(
+			boost::asio::buffer(part_of_array),
+			boost::bind(
+				&SocketSession::OnReceiveBody, 
+				shared_from_this(),
+				boost::asio::placeholders::error,
+				boost::asio::placeholders::bytes_transferred
+			)
+		);
+
+	}
+
+	auto OnReceiveBody(const boost::system::error_code& error_code, 
+			std::size_t bytes_transferred) -> void {
+		if(!error_code){
+			auto temp_part_of_array = ByteArray();
+			std::copy(this->part_of_array.begin(), 
+				this->part_of_array.begin() + bytes_transferred, 
+				std::back_inserter(temp_part_of_array));
+			this->os << "partly received(body): \"" 
+				<< std::string(this->part_of_array.begin(), this->part_of_array.begin()+bytes_transferred) << "\"\n" 
+				<< temp_part_of_array
+				<< std::endl;
+			std::copy(part_of_array.begin(), part_of_array.begin()+bytes_transferred, 
+				std::back_inserter(this->received_byte_array));
+			OnReceiveBodyProxy(error_code, bytes_transferred);
+		}
+		else if(this->sock.is_open()){ //peer socket closed
+			this->os << "maybe peer socket close." << std::endl;
+			this->Close();	
+		}
+		else{ //self socket closed
+			this->os << "receiving stop" << std::endl;
+		}
+	}
+	
+	auto OnReceiveBodyProxy(const boost::system::error_code& error_code, 
+			std::size_t bytes_transferred) -> void {
+		if(!error_code){
+			assert(this->received_byte_array.size() <= 
+				header.GetBodySize()+header.GetHeaderSize());
+			if(this->received_byte_array.size() >= 
+					this->header.GetHeaderSize()+this->header.GetBodySize()){
+				this->os << "whole bytes received:" 
+					<< this->received_byte_array.size() 
 					<< " bytes transffered\n\"" 
 					<< utility::ByteArray2String(this->received_byte_array) 
 					<< "\"" << std::endl;
+				auto body_byte_array = ByteArray();
+				std::copy(this->received_byte_array.begin()+header.GetHeaderSize(), 
+					this->received_byte_array.end(), std::back_inserter(body_byte_array));
+				this->os << "body : \"" 
+					<< utility::ByteArray2String(body_byte_array) 
+					<< "\"" << std::endl;
 				this->sock.get_io_service().dispatch(boost::bind(
-					this->on_receive_func, this->shared_from_this(), this->received_byte_array));
-				this->received_byte_array.resize(0);
+					this->on_receive_func, this->shared_from_this(), 
+					body_byte_array));
+				this->received_byte_array.clear();
+				HandlOnReceiveHeader();
 			}
-			
-			DoOnReceive();
+			else{
+				HandlOnReceiveBody();
+			}
 		}
 		else if(this->sock.is_open()){ //peer socket closed
 			this->os << "maybe peer socket close." << std::endl;
@@ -130,12 +205,22 @@ private:
 		}
 	}
 
-	auto DoOnSend(Session::OnSendFinishedFunc on_send_finished_func) -> void {
+
+	auto HandlOnSend(Session::OnSendFinishedFunc on_send_finished_func) -> void {
+		const auto body_byte_array = send_byte_array_queue.front();
+		const auto header = SocketSessionHeader(body_byte_array.size());
+		const auto header_byte_array = header.Serialize();
+		auto message_byte_array = ByteArray();
+		std::copy(header_byte_array.begin(), header_byte_array.end(), 
+			std::back_inserter(message_byte_array));
+		std::copy(body_byte_array.begin(), body_byte_array.end(), 
+			std::back_inserter(message_byte_array));
+		std::cout << "send:\"" <<  utility::ByteArray2String(message_byte_array) << "\"" << std::endl;
 		boost::asio::async_write(
 			this->sock, 
 			boost::asio::buffer(
-				&send_byte_array_queue.front().front(), 
-				send_byte_array_queue.front().size()
+				&message_byte_array.front(), 
+				message_byte_array.size()
 			),
 			boost::bind(
 				&SocketSession::OnSend,
@@ -152,7 +237,7 @@ private:
 			if(!this->send_byte_array_queue.empty()){
 				this->send_byte_array_queue.pop_front();
 				if(!this->send_byte_array_queue.empty()){
-					this->DoOnSend(on_send_finished_func);
+					this->HandlOnSend(on_send_finished_func);
 				}
 				else{
 					on_send_finished_func(this->shared_from_this());
@@ -168,7 +253,7 @@ private:
 		}
 	}
 
-	auto DoClose() -> void {
+	auto HandlClose() -> void {
 		this->os << GetRemoteAddressStr(this->shared_from_this()) << ":"
 			<< GetRemotePort(this->shared_from_this()) << " closed" << std::endl;
 		this->sock.close();
@@ -181,6 +266,7 @@ private:
 	ByteArray part_of_array;
 	ByteArray received_byte_array;
 	std::deque<ByteArray> send_byte_array_queue;
+	SocketSessionHeader header;
 	//boost::asio::strand on_send_strand;
 	std::ostream& os;
 

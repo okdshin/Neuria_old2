@@ -43,6 +43,12 @@ int main(int argc, char* argv[])
 		std::cout << header64.Serialize() << std::endl;
 		std::cout << SocketSessionHeader::Parse(header64.Serialize()) << std::endl;
 	}
+	{
+		SocketSessionHeader header64(pow(2, 128));
+		std::cout << header64 << std::endl;
+		std::cout << header64.Serialize() << std::endl;
+		std::cout << SocketSessionHeader::Parse(header64.Serialize()) << std::endl;
+	}
     return 0;
 }
 

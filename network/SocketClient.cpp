@@ -42,7 +42,7 @@ auto SocketClientTestCuiApp(boost::asio::io_service& service,
 			}
 			else if(command == "broadcast"){
 				const auto message = test::GetInput<std::string>("message?:");
-				std::vector<char> msg(message.c_str(), message.c_str()+message.length());
+				std::vector<unsigned char> msg(message.c_str(), message.c_str()+message.length());
 				broadcast_func(msg);
 			}
 			else if(command == "close"){
@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
 			session_pool->Add(session);
 		}, 
 		[](const ErrorCode& error_code){  // on_failed connect
-			std::cout << "on_failed_connect!!! :"  << ToString(error_code) << std::endl; 
+			std::cout << "on_failed_connect!!! :"  << error_code << std::endl; 
 		}, 
 		[](Session::Pointer session, const ByteArray& byte_array){ // on_receive
 			std::cout << "on_receive!!!" << std::endl; 
