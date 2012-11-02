@@ -272,8 +272,7 @@ private:
 
 };
 
-
-auto CreateTestSocketSession(boost::asio::io_service& service) -> SocketSession::Pointer {
+inline auto CreateTestSocketSession(boost::asio::io_service& service) -> SocketSession::Pointer {
 	return SocketSession::Create(service, 128, 
 		[](Session::Pointer session, const ByteArray&)
 			{ std::cout << "on receive !!!" << std::endl; }, 

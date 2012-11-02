@@ -10,7 +10,7 @@
 namespace neuria{
 namespace hash{
 
-auto CalcHashStr(const ByteArray& data) -> std::string
+inline auto CalcHashStr(const ByteArray& data) -> std::string
 {
 	SHA256_CTX sha256;
 	SHA256_Init(&sha256);

@@ -135,12 +135,12 @@ private:
 	ByteArraySize header_size, body_size;
 };
 
-auto operator<<(std::ostream& os, const SocketSessionHeader& header) -> std::ostream& {
+inline auto operator<<(std::ostream& os, const SocketSessionHeader& header) -> std::ostream& {
 	os << "HeaderSize : " << header.GetHeaderSize() << "\nBodySize : " << header.GetBodySize();
 	return os;
 }
 
-auto operator<<(std::ostream& os, const ByteArray& byte_array) -> std::ostream& {
+inline auto operator<<(std::ostream& os, const ByteArray& byte_array) -> std::ostream& {
 	for(uint8_t byte : byte_array){
 		os << static_cast<int>(byte) << "\t";
 	}

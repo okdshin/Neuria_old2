@@ -36,7 +36,7 @@ private:
 	virtual auto DoStartAccept() -> void = 0;
 };
 
-auto SetCallbacks(Server::Pointer target, 
+inline auto SetCallbacks(Server::Pointer target, 
 		Server::OnAcceptFunc on_accept, 
 		Session::OnReceiveFunc on_receive, 
 		Session::OnCloseFunc on_close) -> void {
@@ -45,13 +45,13 @@ auto SetCallbacks(Server::Pointer target,
 	target->SetOnCloseFunc(on_close);
 }
 
-auto SetCallbacks(Server::Pointer target, SessionPool::Pointer pool,
+inline auto SetCallbacks(Server::Pointer target, SessionPool::Pointer pool,
 		Session::OnReceiveFunc on_receive) -> void {
 	SetCallbacks(target, [pool](Session::Pointer session){ pool->Add(session); }, 
 		on_receive, [pool](Session::Pointer session){ pool->Erase(session); });
 }
 
-auto SetOnReceiveFuncOnly(Server::Pointer target,
+inline auto SetOnReceiveFuncOnly(Server::Pointer target,
 		Session::OnReceiveFunc on_receive) -> void {
 	SetCallbacks(target, [](Session::Pointer){}, 
 		on_receive, [](Session::Pointer){});		

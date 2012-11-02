@@ -35,7 +35,7 @@ private:
 		Session::OnReceiveFunc on_receive_func, Session::OnCloseFunc on_close_func) -> void = 0;
 };
 
-auto Connect(Client::Pointer client, 
+inline auto Connect(Client::Pointer client, 
 		const NodeId& node_id, SessionPool::Pointer pool, 
 		Client::OnFailedConnectFunc on_failed_connect_func, 
 		Session::OnReceiveFunc on_receive_func) -> void {
@@ -46,7 +46,7 @@ auto Connect(Client::Pointer client,
 		[pool](Session::Pointer session){ pool->Erase(session); });	
 }
 
-auto Communicate(Client::Pointer client, const NodeId& node_id, 
+inline auto Communicate(Client::Pointer client, const NodeId& node_id, 
 		Client::OnFailedConnectFunc on_failed_connect_func, 
 		const ByteArray& byte_array, Session::OnReceiveFunc on_receive_func,
 		Session::OnSendFinishedFunc on_send_finished_func) -> void {
@@ -58,7 +58,7 @@ auto Communicate(Client::Pointer client, const NodeId& node_id,
 		[](Session::Pointer){});	
 }
 
-auto Send(Client::Pointer client, 
+inline auto Send(Client::Pointer client, 
 		const NodeId& node_id, const ByteArray& byte_array,
 		Client::OnFailedConnectFunc on_failed_connect_func) -> void {
 	client->Connect(node_id,

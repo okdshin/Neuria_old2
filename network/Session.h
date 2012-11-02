@@ -47,7 +47,7 @@ private:
  	virtual auto DoClose() -> void = 0;
 };
 
-auto Send(Session::Pointer session, const ByteArray& byte_array) -> void {
+inline auto Send(Session::Pointer session, const ByteArray& byte_array) -> void {
 	session->Send(byte_array, [](Session::Pointer){});
 };
 

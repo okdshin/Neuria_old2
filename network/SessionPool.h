@@ -69,7 +69,7 @@ private:
 	std::vector<Session::Pointer> sessions;
 };
 
-auto Broadcast(
+inline auto Broadcast(
 		SessionPool::Pointer session_pool, const ByteArray& byte_array, 
 		Session::OnSendFinishedFunc on_send_finished_func) -> void {	
 	if(!session_pool->IsEmpty()){
@@ -82,7 +82,7 @@ auto Broadcast(
 	}
 }
 
-auto operator<<(std::ostream& os, SessionPool::Pointer pool) -> std::ostream& {
+inline auto operator<<(std::ostream& os, SessionPool::Pointer pool) -> std::ostream& {
 	for(const auto& session : *pool){
 		os << session->GetNodeId() << " ";
 	}

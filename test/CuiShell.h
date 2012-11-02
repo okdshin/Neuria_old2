@@ -71,7 +71,7 @@ private:
 	std::ostream& os;
 };
 
-auto RegisterExitFunc(CuiShell& shell) -> void {
+inline auto RegisterExitFunc(CuiShell& shell) -> void {
 	shell.Register("exit", "exit this app.", [](const CuiShell::ArgList&){exit(0);});
 }
 

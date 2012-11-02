@@ -6,7 +6,7 @@
 namespace neuria{
 namespace network{
 
-auto CreateSocketNodeId(const std::string& hostname, int port) -> NodeId {
+inline auto CreateSocketNodeId(const std::string& hostname, int port) -> NodeId {
 	return hostname + "/" + boost::lexical_cast<std::string>(port);	
 }
 

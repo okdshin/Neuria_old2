@@ -9,7 +9,7 @@ namespace network{
 class ErrorCodeType{};
 using ErrorCode = utility::TypeWrapper<boost::system::error_code, ErrorCodeType>;
 
-auto operator<<(std::ostream& os, const ErrorCode& error_code) -> std::ostream& {
+inline auto operator<<(std::ostream& os, const ErrorCode& error_code) -> std::ostream& {
 	os << error_code().message();
 	return os;	
 }
