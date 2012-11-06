@@ -7,7 +7,7 @@
 namespace neuria{
 namespace utility{
 
-auto RANDOM = boost::random::mt19937(static_cast<unsigned long>(std::time(0)));
+static auto RANDOM = boost::random::mt19937(static_cast<unsigned long>(std::time(0)));
 using RandomRange = boost::random::uniform_int_distribution<>;
 //RandomRange(1,6) is equalt to dice.
 
