@@ -12,6 +12,7 @@
 #include "Session.h"
 #include "SocketRoutine.h"
 #include "SocketSessionHeader.h"
+#include <fstream>
 
 namespace neuria{
 namespace network{
@@ -107,15 +108,18 @@ private:
 			this->part_of_array.begin() + bytes_transferred, 
 			std::back_inserter(temp_part_of_array));
 		if(!error_code){
+			/*
 			this->os << "partly received(header): \"" 
 				<< std::string(this->part_of_array.begin(), this->part_of_array.begin()+bytes_transferred) << "\"\n" 
 				<< temp_part_of_array
 				<< std::endl;
+			*/
 			std::copy(part_of_array.begin(), part_of_array.begin()+bytes_transferred, 
 				std::back_inserter(this->received_byte_array));
 			if(SocketSessionHeader::IsEnableParse(this->received_byte_array)){
-				this->header = SocketSessionHeader::Parse(received_byte_array);
+				this->header = SocketSessionHeader::Parse(this->received_byte_array);
 				this->os << "header: " << this->header << std::endl;
+				this->os << this->received_byte_array << std::endl;
 				OnReceiveBodyProxy(error_code, bytes_transferred);
 			}
 			else{
@@ -151,10 +155,12 @@ private:
 			std::copy(this->part_of_array.begin(), 
 				this->part_of_array.begin() + bytes_transferred, 
 				std::back_inserter(temp_part_of_array));
+			/*
 			this->os << "partly received(body): \"" 
 				<< std::string(this->part_of_array.begin(), this->part_of_array.begin()+bytes_transferred) << "\"\n" 
 				<< temp_part_of_array
 				<< std::endl;
+			*/
 			std::copy(part_of_array.begin(), part_of_array.begin()+bytes_transferred, 
 				std::back_inserter(this->received_byte_array));
 			OnReceiveBodyProxy(error_code, bytes_transferred);
@@ -178,7 +184,7 @@ private:
 				this->os << "whole bytes received:" 
 					<< this->received_byte_array.size() 
 					<< " bytes transffered\n\"" 
-					<< utility::ByteArray2String(this->received_byte_array) 
+					<<"(...)"//<< utility::ByteArray2String(this->received_byte_array) 
 					<< "\"" << std::endl;
 				auto body_byte_array = ByteArray();
 				std::copy(this->received_byte_array.begin()+header.GetHeaderSize(), 
@@ -209,19 +215,21 @@ private:
 	auto HandlOnSend(Session::OnSendFinishedFunc on_send_finished_func) -> void {
 		const auto body_byte_array = send_byte_array_queue.front();
 		const auto header = SocketSessionHeader(body_byte_array.size());
+		std::cout << "send header:" << header << std::endl;
 		const auto header_byte_array = header.Serialize();
-		auto message_byte_array = ByteArray();
+		this->header_and_body_byte_array.clear();
 		std::copy(header_byte_array.begin(), header_byte_array.end(), 
-			std::back_inserter(message_byte_array));
+			std::back_inserter(header_and_body_byte_array));
 		std::copy(body_byte_array.begin(), body_byte_array.end(), 
-			std::back_inserter(message_byte_array));
-		std::cout << "send:\"" <<  utility::ByteArray2String(message_byte_array) << "\"" << std::endl;
+			std::back_inserter(header_and_body_byte_array));
+		{
+			std::ofstream ofs("./log.txt");
+			ofs << "send:\"" << header_and_body_byte_array << "\"" << std::endl;
+		}
+
 		boost::asio::async_write(
 			this->sock, 
-			boost::asio::buffer(
-				&message_byte_array.front(), 
-				message_byte_array.size()
-			),
+			boost::asio::buffer(this->header_and_body_byte_array),
 			boost::bind(
 				&SocketSession::OnSend,
 				shared_from_this(), 
@@ -233,6 +241,7 @@ private:
 
 	auto OnSend(Session::OnSendFinishedFunc on_send_finished_func, 
 			const boost::system::error_code& error_code) -> void {
+		std::cout << "on send called." << std::endl;
 		if(!error_code){
 			if(!this->send_byte_array_queue.empty()){
 				this->send_byte_array_queue.pop_front();
@@ -246,7 +255,7 @@ private:
 		}
 		else if(error_code == boost::system::errc::connection_reset)
 		{
-			this->os << "reseted ?" << std::endl;	
+			this->os << "reseted?" << std::endl;	
 		}
 		else{
 			this->os << "send failed. error code is "<< error_code.message() << std::endl;	
@@ -267,6 +276,7 @@ private:
 	ByteArray received_byte_array;
 	std::deque<ByteArray> send_byte_array_queue;
 	SocketSessionHeader header;
+	ByteArray header_and_body_byte_array;
 	//boost::asio::strand on_send_strand;
 	std::ostream& os;
 

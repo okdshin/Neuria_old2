@@ -30,8 +30,10 @@ public:
 	
 	auto Send(const ByteArray& byte_array, 
 			OnSendFinishedFunc on_send_finished_func) -> void {
+		/*
 		std::cout << "send:\n\"" << utility::ByteArray2String(byte_array) 
 			<< "\"" << std::endl;
+		*/
 		DoSend(byte_array, on_send_finished_func);		
 	}
  	

@@ -45,6 +45,12 @@ auto SocketClientTestCuiApp(boost::asio::io_service& service,
 				std::vector<unsigned char> msg(message.c_str(), message.c_str()+message.length());
 				broadcast_func(msg);
 			}
+			else if(command == "garbage"){
+				const auto size = test::GetInput<unsigned int>("size?");
+				std::vector<unsigned char> garbage(size-1, 'a');
+				garbage.push_back('b');
+				broadcast_func(garbage);
+			}
 			else if(command == "close"){
 				close_func();	
 			}
