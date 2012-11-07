@@ -30,10 +30,10 @@ private:
 		: service(service), buffer_size(buffer_size), os(os){}
 	
 	auto DoConnect(const NodeId& node_id, 
-			OnConnectFunc on_connect_func, 
+			OnConnectedFunc on_connect_func, 
 			OnFailedConnectFunc on_failed_connect_func, 
-			Session::OnReceiveFunc on_receive_func, 
-			Session::OnCloseFunc on_close_func) -> void {
+			Session::OnReceivedFunc on_receive_func, 
+			Session::OnClosedFunc on_close_func) -> void {
 		this->os << "connectiong..." << std::endl;
 
 		boost::asio::ip::tcp::resolver resolver(this->service); //name resolving
@@ -59,7 +59,7 @@ private:
 				on_connect_func, on_failed_connect_func, new_session, boost::asio::placeholders::error));	
 	}
 
-	auto OnConnect(OnConnectFunc on_connect_func, 
+	auto OnConnect(OnConnectedFunc on_connect_func, 
 			OnFailedConnectFunc on_failed_connect_func, 
 			Session::Pointer session, 
 			const boost::system::error_code& error_code) -> void {

@@ -39,25 +39,25 @@ private:
 		this->acceptor.async_accept(
 			new_session->GetSocketRef(),
 			boost::bind(
-				&SocketServer::OnAccept, this->shared_from_this(), new_session,
+				&SocketServer::OnAccepted, this->shared_from_this(), new_session,
 				boost::asio::placeholders::error
 			)
 		);
 	}
 	
-	auto DoSetOnReceiveFunc(Session::OnReceiveFunc on_receive_func) -> void {
+	auto DoSetOnReceivedFunc(Session::OnReceivedFunc on_receive_func) -> void {
 		this->on_receive_func = on_receive_func;
 	}
 
-	auto DoSetOnAcceptFunc(SocketServer::OnAcceptFunc on_accept_func) -> void {
+	auto DoSetOnAcceptedFunc(SocketServer::OnAcceptedFunc on_accept_func) -> void {
 		this->on_accept_func = on_accept_func;
 	}
 	
-	auto DoSetOnCloseFunc(Session::OnCloseFunc on_close_func) -> void {
+	auto DoSetOnClosedFunc(Session::OnClosedFunc on_close_func) -> void {
 		this->on_close_func = on_close_func;
 	}
 
-	auto OnAccept(Session::Pointer session, 
+	auto OnAccepted(Session::Pointer session, 
 			const boost::system::error_code& error_code) -> void {
 		if(!error_code){
 			this->on_accept_func(session);
@@ -72,9 +72,9 @@ private:
 	boost::asio::io_service& service;
 	boost::asio::ip::tcp::acceptor acceptor;
 	int buffer_size;
-	SocketServer::OnAcceptFunc on_accept_func;
-	SocketSession::OnReceiveFunc on_receive_func;
-	SocketSession::OnCloseFunc on_close_func;
+	SocketServer::OnAcceptedFunc on_accept_func;
+	SocketSession::OnReceivedFunc on_receive_func;
+	SocketSession::OnClosedFunc on_close_func;
 	std::ostream& os;
 
 };

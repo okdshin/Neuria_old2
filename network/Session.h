@@ -16,8 +16,8 @@ class Session
 public:
 	using Pointer = boost::shared_ptr<Session>;
 
-	using OnReceiveFunc = boost::function<void (Pointer, const ByteArray&)>;
-	using OnCloseFunc = boost::function<void (Pointer)>;
+	using OnReceivedFunc = boost::function<void (Pointer, const ByteArray&)>;
+	using OnClosedFunc = boost::function<void (Pointer)>;
 	using OnSendFinishedFunc = boost::function<void (Pointer)>;
 
 	auto GetNodeId() -> NodeId {

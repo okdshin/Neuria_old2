@@ -10,18 +10,18 @@ namespace network{
 class Server {
 public:
 	using Pointer = boost::shared_ptr<Server>;
-	using OnAcceptFunc = boost::function<void (Session::Pointer)>;
+	using OnAcceptedFunc = boost::function<void (Session::Pointer)>;
 
-	auto SetOnReceiveFunc(Session::OnReceiveFunc on_receive_func) -> void {
-		this->DoSetOnReceiveFunc(on_receive_func);	
+	auto SetOnReceivedFunc(Session::OnReceivedFunc on_receive_func) -> void {
+		this->DoSetOnReceivedFunc(on_receive_func);	
 	}
 	
-	auto SetOnAcceptFunc(OnAcceptFunc on_accept_func) -> void {
-		this->DoSetOnAcceptFunc(on_accept_func);	
+	auto SetOnAcceptedFunc(OnAcceptedFunc on_accept_func) -> void {
+		this->DoSetOnAcceptedFunc(on_accept_func);	
 	}
 	
-	auto SetOnCloseFunc(Session::OnCloseFunc on_close_func) -> void {
-		this->DoSetOnCloseFunc(on_close_func);	
+	auto SetOnClosedFunc(Session::OnClosedFunc on_close_func) -> void {
+		this->DoSetOnClosedFunc(on_close_func);	
 	}
 	
 	auto StartAccept() -> void {
@@ -29,30 +29,30 @@ public:
 	}
 
 private:
-	virtual auto DoSetOnReceiveFunc(Session::OnReceiveFunc on_receive_func) -> void = 0;
-	virtual auto DoSetOnAcceptFunc(OnAcceptFunc on_accept_func) -> void = 0;
-	virtual auto DoSetOnCloseFunc(Session::OnCloseFunc on_close_func) -> void = 0;
+	virtual auto DoSetOnReceivedFunc(Session::OnReceivedFunc on_receive_func) -> void = 0;
+	virtual auto DoSetOnAcceptedFunc(OnAcceptedFunc on_accept_func) -> void = 0;
+	virtual auto DoSetOnClosedFunc(Session::OnClosedFunc on_close_func) -> void = 0;
 
 	virtual auto DoStartAccept() -> void = 0;
 };
 
 inline auto SetCallbacks(Server::Pointer target, 
-		Server::OnAcceptFunc on_accept, 
-		Session::OnReceiveFunc on_receive, 
-		Session::OnCloseFunc on_close) -> void {
-	target->SetOnAcceptFunc(on_accept);
-	target->SetOnReceiveFunc(on_receive);
-	target->SetOnCloseFunc(on_close);
+		Server::OnAcceptedFunc on_accept, 
+		Session::OnReceivedFunc on_receive, 
+		Session::OnClosedFunc on_close) -> void {
+	target->SetOnAcceptedFunc(on_accept);
+	target->SetOnReceivedFunc(on_receive);
+	target->SetOnClosedFunc(on_close);
 }
 
 inline auto SetCallbacks(Server::Pointer target, SessionPool::Pointer pool,
-		Session::OnReceiveFunc on_receive) -> void {
+		Session::OnReceivedFunc on_receive) -> void {
 	SetCallbacks(target, [pool](Session::Pointer session){ pool->Add(session); }, 
 		on_receive, [pool](Session::Pointer session){ pool->Erase(session); });
 }
 
-inline auto SetOnReceiveFuncOnly(Server::Pointer target,
-		Session::OnReceiveFunc on_receive) -> void {
+inline auto SetOnReceivedFuncOnly(Server::Pointer target,
+		Session::OnReceivedFunc on_receive) -> void {
 	SetCallbacks(target, [](Session::Pointer){}, 
 		on_receive, [](Session::Pointer){});		
 }

@@ -28,7 +28,7 @@ public:
 
 	static auto Create(
 		boost::asio::io_service& service, int buffer_size,
-		OnReceiveFunc on_receive_func, OnCloseFunc on_close_func,
+		OnReceivedFunc on_receive_func, OnClosedFunc on_close_func,
 		std::ostream& os) -> SocketSession::Pointer {
 		return Pointer(new SocketSession(
 			service, buffer_size, on_receive_func, on_close_func, os));
@@ -81,8 +81,8 @@ private: //over ridden
 
 private:
 	SocketSession(boost::asio::io_service& service, int buffer_size,
-		OnReceiveFunc on_receive_func,
-		OnCloseFunc on_close_func,
+		OnReceivedFunc on_receive_func,
+		OnClosedFunc on_close_func,
 		std::ostream& os)
 			:sock(service), on_receive_func(on_receive_func), on_close_func(on_close_func), 
 			part_of_array(buffer_size), received_byte_array(), //on_send_strand(service), 
@@ -214,19 +214,22 @@ private:
 
 	auto HandlOnSend(Session::OnSendFinishedFunc on_send_finished_func) -> void {
 		const auto body_byte_array = send_byte_array_queue.front();
+		
 		const auto header = SocketSessionHeader(body_byte_array.size());
 		std::cout << "send header:" << header << std::endl;
 		const auto header_byte_array = header.Serialize();
+		
 		this->header_and_body_byte_array.clear();
 		std::copy(header_byte_array.begin(), header_byte_array.end(), 
 			std::back_inserter(header_and_body_byte_array));
 		std::copy(body_byte_array.begin(), body_byte_array.end(), 
 			std::back_inserter(header_and_body_byte_array));
+		
 		{
 			std::ofstream ofs("./log.txt");
 			ofs << "send:\"" << header_and_body_byte_array << "\"" << std::endl;
 		}
-
+		
 		boost::asio::async_write(
 			this->sock, 
 			boost::asio::buffer(this->header_and_body_byte_array),
@@ -270,8 +273,8 @@ private:
 	}
 
 	boost::asio::ip::tcp::socket sock;
-	OnReceiveFunc on_receive_func;
-	OnCloseFunc on_close_func;
+	OnReceivedFunc on_receive_func;
+	OnClosedFunc on_close_func;
 	ByteArray part_of_array;
 	ByteArray received_byte_array;
 	std::deque<ByteArray> send_byte_array_queue;
