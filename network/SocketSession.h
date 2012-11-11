@@ -75,7 +75,7 @@ private: //over ridden
 	
 	auto DoClose() -> void {
 		assert(this->sock.is_open());
-		this->sock.get_io_service().post(
+		this->sock.get_io_service().dispatch(
 			boost::bind(&SocketSession::HandlClose, shared_from_this()));
 	}
 
