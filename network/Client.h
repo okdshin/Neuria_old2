@@ -35,41 +35,58 @@ private:
 		Session::OnReceivedFunc on_receive_func, Session::OnClosedFunc on_close_func) -> void = 0;
 };
 
+//create session and add it to pool.
 inline auto Connect(Client::Pointer client, 
 		const NodeId& node_id, SessionPool::Pointer pool, 
 		Client::OnFailedConnectFunc on_failed_connect_func, 
-		Session::OnReceivedFunc on_receive_func) -> void {
+		Session::OnReceivedFunc on_received_func) -> void {
 	client->Connect(node_id, 
-		[pool](Session::Pointer session){ pool->Add(session); }, 
+		Client::OnConnectedFunc([pool](Session::Pointer session){ 
+			pool->Add(session); 
+		}), 
 		on_failed_connect_func,
-		on_receive_func, 
-		[pool](Session::Pointer session){ pool->Erase(session); });	
+		on_received_func, 
+		Session::OnClosedFunc([pool](Session::Pointer session){ 
+			pool->Erase(session); 
+		})
+	);	
 }
 
+//
 inline auto Communicate(Client::Pointer client, const NodeId& node_id, 
 		Client::OnFailedConnectFunc on_failed_connect_func, 
-		const ByteArray& byte_array, Session::OnReceivedFunc on_receive_func,
+		const ByteArray& byte_array, Session::OnReceivedFunc on_received_func,
 		Session::OnSendFinishedFunc on_send_finished_func) -> void {
 	client->Connect(node_id, 
-		[byte_array, on_send_finished_func](Session::Pointer session){ 
-			session->Send(byte_array, on_send_finished_func); }, 
+		Client::OnConnectedFunc([byte_array, on_send_finished_func](
+				Session::Pointer session){ 
+			session->Send(byte_array, on_send_finished_func); 
+		}), 
 		on_failed_connect_func,
-		on_receive_func,
-		[](Session::Pointer){});	
+		on_received_func,
+		Session::OnClosedFunc([](Session::Pointer){
+		})
+	);	
 }
 
+//send once
 inline auto Send(Client::Pointer client, 
 		const NodeId& node_id, const ByteArray& byte_array,
 		Client::OnFailedConnectFunc on_failed_connect_func) -> void {
 	client->Connect(node_id,
-		[byte_array](Session::Pointer session){
+		Client::OnConnectedFunc([byte_array](Session::Pointer session){
 			session->Send(byte_array, 
-				[](Session::Pointer session){ session->Close(); }
+				Session::OnSendFinishedFunc([](Session::Pointer session){ 
+					session->Close(); 
+				})
 			);
-		}, 
+		}), 
 		on_failed_connect_func,
-		[](Session::Pointer, const ByteArray&){}, 
-		[](Session::Pointer){});				
+		Session::OnReceivedFunc([](Session::Pointer, const ByteArray&){
+		}), 
+		Session::OnClosedFunc([](Session::Pointer){
+		})
+	);				
 }
 
 }

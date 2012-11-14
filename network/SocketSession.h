@@ -23,15 +23,22 @@ public:
 	using Pointer = boost::shared_ptr<SocketSession>;
 
 	~SocketSession(){
-		this->os << "session deleted." << std::endl;
+		this->os << "SESSION DELETED." << std::endl;
+		this->os << "socket close...." << std::endl;
+		this->sock.close();
+		this->os << "socket closed." << std::endl;
+
 	}
 
 	static auto Create(
 		boost::asio::io_service& service, int buffer_size,
 		OnReceivedFunc on_receive_func, OnClosedFunc on_close_func,
 		std::ostream& os) -> SocketSession::Pointer {
-		return Pointer(new SocketSession(
+			
+		auto session =  Pointer(new SocketSession(
 			service, buffer_size, on_receive_func, on_close_func, os));
+		os << session << " socket created." << std::endl;
+		return session;
 	}
 
 	static auto GetRemoteAddressStr(SocketSession::Pointer session) -> std::string {
@@ -76,7 +83,7 @@ private: //over ridden
 	auto DoClose() -> void {
 		assert(this->sock.is_open());
 		this->sock.get_io_service().dispatch(
-			boost::bind(&SocketSession::HandlClose, shared_from_this()));
+			boost::bind(&SocketSession::HandlClose, shared_from_this()));		
 	}
 
 private:
@@ -86,7 +93,9 @@ private:
 		std::ostream& os)
 			:sock(service), on_receive_func(on_receive_func), on_close_func(on_close_func), 
 			part_of_array(buffer_size), received_byte_array(), //on_send_strand(service), 
-			os(os){}
+			os(os){
+			this->os << "SESSION CREATED" << std::endl;	
+		}
 
 	auto HandlOnReceiveHeader() -> void {
 		this->sock.async_read_some(
@@ -126,11 +135,11 @@ private:
 				HandlOnReceiveHeader();	
 			}
 		}
-		else if(this->sock.is_open()){ //peer socket closed
-			this->os << "maybe peer socket close." << std::endl;
-			this->Close();	
+		else if(this->sock.is_open()){
+			std::cout << "peer socket closed" << std::endl;
+			//this->HandlClose();		
 		}
-		else{ //self socket closed
+		else {
 			this->os << "receiving stop" << std::endl;
 		}
 	}
@@ -165,11 +174,11 @@ private:
 				std::back_inserter(this->received_byte_array));
 			OnReceiveBodyProxy(error_code, bytes_transferred);
 		}
-		else if(this->sock.is_open()){ //peer socket closed
-			this->os << "maybe peer socket close." << std::endl;
-			this->Close();	
+		else if(this->sock.is_open()){
+			std::cout << "peer socket closed" << std::endl;
+			//this->HandlClose();		
 		}
-		else{ //self socket closed
+		else {
 			this->os << "receiving stop" << std::endl;
 		}
 	}
@@ -177,8 +186,10 @@ private:
 	auto OnReceiveBodyProxy(const boost::system::error_code& error_code, 
 			std::size_t bytes_transferred) -> void {
 		if(!error_code){
-			assert(this->received_byte_array.size() <= 
-				header.GetBodySize()+header.GetHeaderSize());
+			if(this->received_byte_array.size() > 
+					header.GetBodySize()+header.GetHeaderSize()){
+				this->os << "OOOOO" << std::endl;	
+			}
 			if(this->received_byte_array.size() >= 
 					this->header.GetHeaderSize()+this->header.GetBodySize()){
 				this->os << "whole bytes received:" 
@@ -188,25 +199,35 @@ private:
 					<< "\"" << std::endl;
 				auto body_byte_array = ByteArray();
 				std::copy(this->received_byte_array.begin()+header.GetHeaderSize(), 
-					this->received_byte_array.end(), std::back_inserter(body_byte_array));
+					this->received_byte_array.begin()
+						+header.GetHeaderSize()
+						+header.GetBodySize(), 
+					std::back_inserter(body_byte_array));
 				this->os << "body : \"" 
 					<< utility::ByteArray2String(body_byte_array) 
 					<< "\"" << std::endl;
 				this->sock.get_io_service().dispatch(boost::bind(
 					this->on_receive_func, this->shared_from_this(), 
 					body_byte_array));
-				this->received_byte_array.clear();
+				auto temp_byte_array = neuria::ByteArray();
+				std::copy(
+					this->received_byte_array.begin()
+						+header.GetHeaderSize()
+						+header.GetBodySize(),
+					this->received_byte_array.end(),
+					std::back_inserter(temp_byte_array));
+				this->received_byte_array = temp_byte_array;
 				HandlOnReceiveHeader();
 			}
 			else{
 				HandlOnReceiveBody();
 			}
 		}
-		else if(this->sock.is_open()){ //peer socket closed
-			this->os << "maybe peer socket close." << std::endl;
-			this->Close();	
+		else if(this->sock.is_open()){
+			std::cout << "peer socket closed" << std::endl;
+			//this->HandlClose();		
 		}
-		else{ //self socket closed
+		else {
 			this->os << "receiving stop" << std::endl;
 		}
 	}
@@ -256,20 +277,26 @@ private:
 				}
 			}
 		}
-		else if(error_code == boost::system::errc::connection_reset)
+		else
 		{
-			this->os << "reseted?" << std::endl;	
-		}
-		else{
-			this->os << "send failed. error code is "<< error_code.message() << std::endl;	
+			this->os << "send failed. error code is "<< error_code.message() << std::endl;
+			//this->HandlClose();
 		}
 	}
 
 	auto HandlClose() -> void {
-		this->os << GetRemoteAddressStr(this->shared_from_this()) << ":"
-			<< GetRemotePort(this->shared_from_this()) << " closed" << std::endl;
-		this->sock.close();
-		this->on_close_func(shared_from_this());
+		//this->os << GetRemoteAddressStr(this->shared_from_this()) << ":"
+		//	<< GetRemotePort(this->shared_from_this()) << " closed" << std::endl;
+		//assert(this->sock.is_open());
+		if(this->sock.is_open()){
+			//this->sock.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+			this->sock.close();
+		}
+		else{
+			std::cout << "!!!!!dual close!!!!!" << std::endl;	
+		}
+		this->os << this->shared_from_this() << " socket close" << std::endl;
+		this->on_close_func(this->shared_from_this());
 	}
 
 	boost::asio::ip::tcp::socket sock;

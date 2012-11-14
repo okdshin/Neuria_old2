@@ -64,7 +64,7 @@ private:
 			session->StartReceive();
 		}
 		else{
-			this->os << "accept failure" << std::endl;		
+			this->os << "accept failure :" << error_code.message() << std::endl;		
 		}
 		this->StartAccept();
 	}

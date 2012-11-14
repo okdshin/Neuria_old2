@@ -34,6 +34,7 @@ public:
 
 	static auto IsEnableParse(const ByteArray& byte_array) -> bool {
 		assert(!byte_array.empty());
+
 		uint8_t first_byte = byte_array.front();
 		if(first_byte < 253){
 			return true;

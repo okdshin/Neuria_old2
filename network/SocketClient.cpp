@@ -6,102 +6,60 @@
 using namespace neuria;
 using namespace neuria::network;
 
-auto SocketClientTestCuiApp(boost::asio::io_service& service, 
-		SocketClient::Pointer client, 
-		SocketClient::OnConnectFunc on_connect_func, 
-		SocketClient::OnFailedConnectFunc on_failed_connect_func, 
-		Session::OnReceiveFunc on_receive_func,
-		Session::OnCloseFunc on_close_func,
-		boost::function<void (const ByteArray&)> broadcast_func,
-		boost::function<void ()> close_func) -> void {
-
-	boost::asio::io_service::work w(service);
-	boost::thread t(boost::bind(&boost::asio::io_service::run, &service));
-	std::cout << "\"help\" shows commands" << std::endl;
-	while(true){ //main loop
-		try{
-			const auto command = test::GetInput<std::string>("command?:");
-
-			if(command == "help")
-			{
-				std::cout
-					<< "!!!HELP!!!\n"
-					<<"you can use below commands.\n"
-					<< "connect:connect to upper peer.\n"
-					<< "broadcast:broadcast message.\n"
-					<< "close:close session.\n"
-					<< "exit:exit app.\n"
-					<< std::endl;
-				
-			}else if(command == "connect"){
-				const auto hostname = test::GetInput<std::string>("hostname?:");
-				const auto port = test::GetInput<int>("port?:");	
-				std::cout << hostname << ":" << port << std::endl;
-				client->Connect(CreateSocketNodeId(hostname, port), 
-					on_connect_func, on_failed_connect_func, on_receive_func, on_close_func);
-			}
-			else if(command == "broadcast"){
-				const auto message = test::GetInput<std::string>("message?:");
-				std::vector<unsigned char> msg(message.c_str(), message.c_str()+message.length());
-				broadcast_func(msg);
-			}
-			else if(command == "garbage"){
-				const auto size = test::GetInput<unsigned int>("size?");
-				std::vector<unsigned char> garbage(size-1, 'a');
-				garbage.push_back('b');
-				broadcast_func(garbage);
-			}
-			else if(command == "close"){
-				close_func();	
-			}
-			else if(command == "exit"){
-				exit(0);
-			}
-			else{
-				std::cout << "invalid command.(command \"help\" and see)" << std::endl;	
-			}
-		}
-		catch(std::exception& e){
-			std::cout << "error!!!:" << e.what() << std::endl;	
-		}
-	}
-	t.join();	
-}
-
 int main(int argc, char* argv[])
 {
 	boost::asio::io_service service;
+	boost::asio::io_service::work w(service);
+	boost::thread t(boost::bind(&boost::asio::io_service::run, &service));
 
 	const int buffer_size = 128;
-	auto session_pool = SessionPool::Create();
-	auto client = SocketClient::Create(service, buffer_size, std::cout);
 
-	SocketClientTestCuiApp(service, client, 
-		[&session_pool](Session::Pointer session){  // on_connect
-			std::cout << "on_connect!!!" << std::endl; 
-			session_pool->Add(session);
-		}, 
-		[](const ErrorCode& error_code){  // on_failed connect
-			std::cout << "on_failed_connect!!! :"  << error_code << std::endl; 
-		}, 
-		[](Session::Pointer session, const ByteArray& byte_array){ // on_receive
-			std::cout << "on_receive!!!" << std::endl; 
-		},
-		[&session_pool](Session::Pointer session){ // on_close
-			std::cout << "on_close!!!" << std::endl; 
-			session_pool->Erase(session);
-		},
-		[&service, &session_pool](const ByteArray& byte_array){ //broadcast
-			Broadcast(session_pool, byte_array, [](Session::Pointer){});
-			//Send(client, "127.0.0.1", 54321, utl::String2ByteArray("hello"));
-		},
-		[&session_pool](){ // close 
-			std::cout << "close" << std::endl; 
-			for(auto& session : *session_pool){
-				session->Close();	
+	std::stringstream no_output;
+	std::ostream& os = std::cout;
+
+	auto client = neuria::network::SocketClient::Create(
+		service, buffer_size, os);
+	
+	auto session_pool = neuria::network::SessionPool::Create();
+
+	auto shell = neuria::test::CuiShell(std::cout);
+	neuria::test::RegisterExitFunc(shell);
+	
+	shell.Register("link", "create new link.", 
+		[client, session_pool](const neuria::test::CuiShell::ArgList& args){
+			try{
+				client->Connect(
+					neuria::network::CreateSocketNodeId(
+						args.at(1), 
+						boost::lexical_cast<int>(args.at(2))
+					),
+					Client::OnConnectedFunc([session_pool](Session::Pointer session){
+						session_pool->Add(session);	
+					}),
+					Client::OnFailedConnectFunc([](const ErrorCode& error_code){
+						std::cout << "failed create link. : " << error_code << std::endl;
+					}),
+					Session::OnReceivedFunc([](Session::Pointer session, 
+							const ByteArray& byte_array){
+					}),
+					Session::OnClosedFunc([session_pool](Session::Pointer session){
+						session_pool->Erase(session);
+					})
+				);
 			}
-		}
-	);
+			catch(...){
+				std::cout << "invalid node_id" << std::endl;
+			}
+		});
+	shell.Register("close", "search key hash.", 
+		[client, session_pool](const neuria::test::CuiShell::ArgList& args){
+			for(auto session : *session_pool){
+				session_pool->Erase(session);
+			}
+		});
+	
+	shell.Start();
+	t.join();
 
     return 0;
 }
