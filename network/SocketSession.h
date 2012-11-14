@@ -25,11 +25,6 @@ public:
 
 	~SocketSession(){
 		this->os << "SESSION DELETED." << std::endl;
-		this->os << "socket close...." << std::endl;
-		this->sock.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
-		this->sock.close();
-		this->os << "socket closed." << std::endl;
-
 	}
 
 	static auto Create(
@@ -285,6 +280,8 @@ private:
 		//	std::cout << "!!!!!dual close!!!!!" << std::endl;	
 		//}
 		this->os << this->shared_from_this() << "handl close called." << std::endl;
+		this->sock.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+		this->sock.close();
 		this->on_close_func(this->shared_from_this());
 	}
 

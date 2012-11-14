@@ -60,6 +60,7 @@ inline auto Communicate(Client::Pointer client, const NodeId& node_id,
 	client->Connect(node_id, 
 		Client::OnConnectedFunc([byte_array, on_send_finished_func](
 				Session::Pointer session){ 
+			session->StartReceive();
 			session->Send(byte_array, on_send_finished_func); 
 		}), 
 		on_failed_connect_func,
