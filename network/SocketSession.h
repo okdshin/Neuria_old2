@@ -4,6 +4,7 @@
 #include <cassert>
 #include <memory>
 #include <boost/shared_ptr.hpp>
+#include <boost/weak_ptr.hpp>
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
@@ -25,6 +26,7 @@ public:
 	~SocketSession(){
 		this->os << "SESSION DELETED." << std::endl;
 		this->os << "socket close...." << std::endl;
+		this->sock.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
 		this->sock.close();
 		this->os << "socket closed." << std::endl;
 
@@ -81,9 +83,12 @@ private: //over ridden
 	}
 	
 	auto DoClose() -> void {
-		assert(this->sock.is_open());
-		this->sock.get_io_service().dispatch(
+		//assert(this->sock.is_open());
+		
+		this->sock.get_io_service().post(
 			boost::bind(&SocketSession::HandlClose, shared_from_this()));		
+		
+		//this->HandlClose();
 	}
 
 private:
@@ -102,7 +107,7 @@ private:
 			boost::asio::buffer(part_of_array),
 			boost::bind(
 				&SocketSession::OnReceiveHeader, 
-				shared_from_this(),
+				this->shared_from_this(),
 				boost::asio::placeholders::error,
 				boost::asio::placeholders::bytes_transferred
 			)
@@ -117,12 +122,6 @@ private:
 			this->part_of_array.begin() + bytes_transferred, 
 			std::back_inserter(temp_part_of_array));
 		if(!error_code){
-			/*
-			this->os << "partly received(header): \"" 
-				<< std::string(this->part_of_array.begin(), this->part_of_array.begin()+bytes_transferred) << "\"\n" 
-				<< temp_part_of_array
-				<< std::endl;
-			*/
 			std::copy(part_of_array.begin(), part_of_array.begin()+bytes_transferred, 
 				std::back_inserter(this->received_byte_array));
 			if(SocketSessionHeader::IsEnableParse(this->received_byte_array)){
@@ -137,7 +136,7 @@ private:
 		}
 		else if(this->sock.is_open()){
 			std::cout << "peer socket closed" << std::endl;
-			//this->HandlClose();		
+			this->HandlClose();
 		}
 		else {
 			this->os << "receiving stop" << std::endl;
@@ -149,7 +148,7 @@ private:
 			boost::asio::buffer(part_of_array),
 			boost::bind(
 				&SocketSession::OnReceiveBody, 
-				shared_from_this(),
+				this->shared_from_this(),
 				boost::asio::placeholders::error,
 				boost::asio::placeholders::bytes_transferred
 			)
@@ -164,19 +163,13 @@ private:
 			std::copy(this->part_of_array.begin(), 
 				this->part_of_array.begin() + bytes_transferred, 
 				std::back_inserter(temp_part_of_array));
-			/*
-			this->os << "partly received(body): \"" 
-				<< std::string(this->part_of_array.begin(), this->part_of_array.begin()+bytes_transferred) << "\"\n" 
-				<< temp_part_of_array
-				<< std::endl;
-			*/
 			std::copy(part_of_array.begin(), part_of_array.begin()+bytes_transferred, 
 				std::back_inserter(this->received_byte_array));
 			OnReceiveBodyProxy(error_code, bytes_transferred);
 		}
 		else if(this->sock.is_open()){
 			std::cout << "peer socket closed" << std::endl;
-			//this->HandlClose();		
+			this->HandlClose();		
 		}
 		else {
 			this->os << "receiving stop" << std::endl;
@@ -186,10 +179,6 @@ private:
 	auto OnReceiveBodyProxy(const boost::system::error_code& error_code, 
 			std::size_t bytes_transferred) -> void {
 		if(!error_code){
-			if(this->received_byte_array.size() > 
-					header.GetBodySize()+header.GetHeaderSize()){
-				this->os << "OOOOO" << std::endl;	
-			}
 			if(this->received_byte_array.size() >= 
 					this->header.GetHeaderSize()+this->header.GetBodySize()){
 				this->os << "whole bytes received:" 
@@ -225,7 +214,7 @@ private:
 		}
 		else if(this->sock.is_open()){
 			std::cout << "peer socket closed" << std::endl;
-			//this->HandlClose();		
+			this->HandlClose();		
 		}
 		else {
 			this->os << "receiving stop" << std::endl;
@@ -280,7 +269,7 @@ private:
 		else
 		{
 			this->os << "send failed. error code is "<< error_code.message() << std::endl;
-			//this->HandlClose();
+			this->HandlClose();
 		}
 	}
 
@@ -288,14 +277,14 @@ private:
 		//this->os << GetRemoteAddressStr(this->shared_from_this()) << ":"
 		//	<< GetRemotePort(this->shared_from_this()) << " closed" << std::endl;
 		//assert(this->sock.is_open());
-		if(this->sock.is_open()){
+		//if(this->sock.is_open()){
 			//this->sock.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
-			this->sock.close();
-		}
-		else{
-			std::cout << "!!!!!dual close!!!!!" << std::endl;	
-		}
-		this->os << this->shared_from_this() << " socket close" << std::endl;
+			//this->sock.close();
+		//}
+		//else{
+		//	std::cout << "!!!!!dual close!!!!!" << std::endl;	
+		//}
+		this->os << this->shared_from_this() << "handl close called." << std::endl;
 		this->on_close_func(this->shared_from_this());
 	}
 

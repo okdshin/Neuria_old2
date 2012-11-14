@@ -65,7 +65,7 @@ private:
 			const boost::system::error_code& error_code) -> void {
 		if(!error_code){
 			on_connect_func(session);
-			session->StartReceive();
+			//session->StartReceive();
 		}
 		else{
 			this->os << "connect failure. " << error_code.message()  << std::endl;	

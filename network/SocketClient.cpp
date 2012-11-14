@@ -10,11 +10,14 @@ int main(int argc, char* argv[])
 {
 	boost::asio::io_service service;
 	boost::asio::io_service::work w(service);
-	boost::thread t(boost::bind(&boost::asio::io_service::run, &service));
-
+	boost::thread_group thread_group;
+	int thread_num = 10;
+	for(int i = 0; i < thread_num; ++i){
+		thread_group.create_thread(
+			boost::bind(&boost::asio::io_service::run, &service));
+	}
 	const int buffer_size = 128;
 
-	std::stringstream no_output;
 	std::ostream& os = std::cout;
 
 	auto client = neuria::network::SocketClient::Create(
@@ -35,6 +38,7 @@ int main(int argc, char* argv[])
 					),
 					Client::OnConnectedFunc([session_pool](Session::Pointer session){
 						session_pool->Add(session);	
+						session->StartReceive();
 					}),
 					Client::OnFailedConnectFunc([](const ErrorCode& error_code){
 						std::cout << "failed create link. : " << error_code << std::endl;
@@ -59,7 +63,7 @@ int main(int argc, char* argv[])
 		});
 	
 	shell.Start();
-	t.join();
+	thread_group.join_all();
 
     return 0;
 }

@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
 	server->SetOnAcceptedFunc(
 		[&session_pool](Session::Pointer session){
 			std::cout << "on_accept_func called:" << std::endl;
-			//session_pool->Add(session);
+			session_pool->Add(session);
 		}
 	);
 	server->SetOnReceivedFunc(
@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
 	);
 	server->SetOnClosedFunc(
 		[&session_pool](Session::Pointer session){
-			//session_pool->Erase(session);
+			session_pool->Erase(session);
 		}
 	);
 	server->StartAccept();
