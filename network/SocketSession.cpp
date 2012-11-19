@@ -7,12 +7,6 @@ using namespace neuria::network;
 
 int main(int argc, char* argv[])
 {
-	boost::asio::io_service service;
-	auto session = CreateTestSocketSession(service); 
-	service.run();
-	session->StartReceive();	
-	session->GetNodeId();
-	
     return 0;
 }
 

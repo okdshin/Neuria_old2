@@ -38,13 +38,13 @@ int main(int argc, char* argv[])
 					),
 					Client::OnConnectedFunc([session_pool](Session::Pointer session){
 						session_pool->Add(session);	
-						session->StartReceive();
+						session->StartReceive(Session::OnReceivedFunc([](
+								Session::Pointer session, const ByteArray& byte_array){
+							//nothing to do
+						}));
 					}),
 					Client::OnFailedConnectFunc([](const ErrorCode& error_code){
 						std::cout << "failed create link. : " << error_code << std::endl;
-					}),
-					Session::OnReceivedFunc([](Session::Pointer session, 
-							const ByteArray& byte_array){
 					}),
 					Session::OnClosedFunc([session_pool](Session::Pointer session){
 						session_pool->Erase(session);

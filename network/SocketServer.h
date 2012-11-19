@@ -27,54 +27,45 @@ private:
 			int port, int buffer_size, std::ostream& os)
 		: service(service), 
 		acceptor(service, boost::asio::ip::tcp::endpoint(
-			boost::asio::ip::tcp::v4(), port)), buffer_size(buffer_size), 
-		on_accept_func([](Session::Pointer){}), 
-		on_receive_func([](Session::Pointer, const ByteArray&){}), 
-		on_close_func([](Session::Pointer){}), os(os){}
+			boost::asio::ip::tcp::v4(), port)), buffer_size(buffer_size), os(os){}
 	
-	auto DoStartAccept() -> void {
-		auto new_session = SocketSession::Create(this->service, this->buffer_size,
-			this->on_receive_func, this->on_close_func, this->os);
+	auto DoStartAccept(
+		Server::OnAcceptedFunc on_accepted_func,
+		Server::OnFailedAcceptFunc on_failed_accept_func,
+		Session::OnClosedFunc on_closed_func) -> void {
+		auto new_session = SocketSession::Create(
+			this->service, this->buffer_size, on_closed_func, this->os);
 
 		this->acceptor.async_accept(
 			new_session->GetSocketRef(),
 			boost::bind(
-				&SocketServer::OnAccepted, this->shared_from_this(), new_session,
-				boost::asio::placeholders::error
+				&SocketServer::OnAccepted, this->shared_from_this(), 
+				on_accepted_func, on_failed_accept_func, on_closed_func,
+				new_session, boost::asio::placeholders::error
 			)
 		);
 	}
-	
-	auto DoSetOnReceivedFunc(Session::OnReceivedFunc on_receive_func) -> void {
-		this->on_receive_func = on_receive_func;
-	}
 
-	auto DoSetOnAcceptedFunc(SocketServer::OnAcceptedFunc on_accept_func) -> void {
-		this->on_accept_func = on_accept_func;
-	}
-	
-	auto DoSetOnClosedFunc(Session::OnClosedFunc on_close_func) -> void {
-		this->on_close_func = on_close_func;
-	}
-
-	auto OnAccepted(Session::Pointer session, 
+private:
+	auto OnAccepted(
+			Server::OnAcceptedFunc on_accepted_func, 
+			Server::OnFailedAcceptFunc on_failed_accept_func, 
+			Session::OnClosedFunc on_closed_func,
+			Session::Pointer session, 
 			const boost::system::error_code& error_code) -> void {
 		if(!error_code){
-			this->on_accept_func(session);
-			session->StartReceive();
+			on_accepted_func(session);
 		}
 		else{
-			this->os << "accept failure :" << error_code.message() << std::endl;		
+			this->os << "accept failure :" << error_code.message() << std::endl;
+			on_failed_accept_func(ErrorCode(error_code));
 		}
-		this->StartAccept();
+		this->StartAccept(on_accepted_func, on_failed_accept_func, on_closed_func);
 	}
 
 	boost::asio::io_service& service;
 	boost::asio::ip::tcp::acceptor acceptor;
 	int buffer_size;
-	SocketServer::OnAcceptedFunc on_accept_func;
-	SocketSession::OnReceivedFunc on_receive_func;
-	SocketSession::OnClosedFunc on_close_func;
 	std::ostream& os;
 
 };

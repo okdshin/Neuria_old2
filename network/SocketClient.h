@@ -30,10 +30,9 @@ private:
 		: service(service), buffer_size(buffer_size), os(os){}
 	
 	auto DoConnect(const NodeId& node_id, 
-			OnConnectedFunc on_connect_func, 
+			OnConnectedFunc on_connected_func, 
 			OnFailedConnectFunc on_failed_connect_func, 
-			Session::OnReceivedFunc on_receive_func, 
-			Session::OnClosedFunc on_close_func) -> void {
+			Session::OnClosedFunc on_closed_func) -> void {
 		this->os << "connectiong..." << std::endl;
 
 		boost::asio::ip::tcp::resolver resolver(this->service); //name resolving
@@ -46,7 +45,7 @@ private:
 		
 		auto endpoint_iter = resolver.resolve(query);
 		auto new_session = SocketSession::Create(
-			this->service, this->buffer_size, on_receive_func, on_close_func, 
+			this->service, this->buffer_size, on_closed_func, 
 			this->os);
 	
 		this->os << "query resolved:"
@@ -56,15 +55,15 @@ private:
 		boost::asio::async_connect(
 			new_session->GetSocketRef(), endpoint_iter, boost::bind(
 				&SocketClient::OnConnect, this->shared_from_this(), 
-				on_connect_func, on_failed_connect_func, new_session, boost::asio::placeholders::error));	
+				on_connected_func, on_failed_connect_func, new_session, boost::asio::placeholders::error));	
 	}
 
-	auto OnConnect(OnConnectedFunc on_connect_func, 
+	auto OnConnect(OnConnectedFunc on_connected_func, 
 			OnFailedConnectFunc on_failed_connect_func, 
 			Session::Pointer session, 
 			const boost::system::error_code& error_code) -> void {
 		if(!error_code){
-			on_connect_func(session);
+			on_connected_func(session);
 			//session->StartReceive();
 		}
 		else{

@@ -24,8 +24,8 @@ public:
 		return DoGetNodeId();	
 	}
 
-	auto StartReceive() -> void {
-		DoStartReceive();	
+	auto StartReceive(OnReceivedFunc on_received_func) -> void {
+		DoStartReceive(on_received_func);	
 	}
 	
 	auto Send(const ByteArray& byte_array, 
@@ -43,7 +43,7 @@ public:
 
 private:
 	virtual auto DoGetNodeId() -> NodeId = 0;
-	virtual auto DoStartReceive() -> void = 0;
+	virtual auto DoStartReceive(OnReceivedFunc on_received_func) -> void = 0;
 	virtual auto DoSend(const ByteArray& byte_array, 
 		OnSendFinishedFunc on_send_finished_func) -> void = 0;
  	virtual auto DoClose() -> void = 0;

@@ -27,14 +27,11 @@ public:
 		this->os << "SESSION DELETED." << std::endl;
 	}
 
-	static auto Create(
-		boost::asio::io_service& service, int buffer_size,
-		OnReceivedFunc on_receive_func, OnClosedFunc on_close_func,
-		std::ostream& os) -> SocketSession::Pointer {
-			
+	static auto Create(boost::asio::io_service& service, int buffer_size,
+			OnClosedFunc on_close_func, std::ostream& os) -> SocketSession::Pointer {
 		auto session =  Pointer(new SocketSession(
-			service, buffer_size, on_receive_func, on_close_func, os));
-		os << session << " socket created." << std::endl;
+			service, buffer_size, on_close_func, os));
+		os << session.get() << " socket created." << std::endl;
 		return session;
 	}
 
@@ -62,8 +59,11 @@ private: //over ridden
 		}
 	}
 
-	auto DoStartReceive() -> void {
+	auto DoStartReceive(Session::OnReceivedFunc on_received_func) -> void {
+		assert(!this->has_started);
+		this->has_started = true;
 		this->os << "start receive" << std::endl;
+		this->on_received_func = on_received_func;
 		HandlOnReceiveHeader();
 	}
 
@@ -78,22 +78,17 @@ private: //over ridden
 	}
 	
 	auto DoClose() -> void {
-		//assert(this->sock.is_open());
-		
 		this->sock.get_io_service().post(
 			boost::bind(&SocketSession::HandlClose, shared_from_this()));		
-		
-		//this->HandlClose();
 	}
 
 private:
 	SocketSession(boost::asio::io_service& service, int buffer_size,
-		OnReceivedFunc on_receive_func,
 		OnClosedFunc on_close_func,
 		std::ostream& os)
-			:sock(service), on_receive_func(on_receive_func), on_close_func(on_close_func), 
+			:sock(service), on_close_func(on_close_func), 
 			part_of_array(buffer_size), received_byte_array(), //on_send_strand(service), 
-			os(os){
+			os(os), has_started(false){
 			this->os << "SESSION CREATED" << std::endl;	
 		}
 
@@ -135,6 +130,7 @@ private:
 		}
 		else {
 			this->os << "receiving stop" << std::endl;
+			this->HandlClose();
 		}
 	}
 	
@@ -168,6 +164,7 @@ private:
 		}
 		else {
 			this->os << "receiving stop" << std::endl;
+			this->HandlClose();
 		}
 	}
 	
@@ -191,7 +188,7 @@ private:
 					<< utility::ByteArray2String(body_byte_array) 
 					<< "\"" << std::endl;
 				this->sock.get_io_service().dispatch(boost::bind(
-					this->on_receive_func, this->shared_from_this(), 
+					this->on_received_func, this->shared_from_this(), 
 					body_byte_array));
 				auto temp_byte_array = neuria::ByteArray();
 				std::copy(
@@ -213,6 +210,7 @@ private:
 		}
 		else {
 			this->os << "receiving stop" << std::endl;
+			this->HandlClose();
 		}
 	}
 
@@ -269,42 +267,24 @@ private:
 	}
 
 	auto HandlClose() -> void {
-		//this->os << GetRemoteAddressStr(this->shared_from_this()) << ":"
-		//	<< GetRemotePort(this->shared_from_this()) << " closed" << std::endl;
-		//assert(this->sock.is_open());
-		//if(this->sock.is_open()){
-			//this->sock.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
-			//this->sock.close();
-		//}
-		//else{
-		//	std::cout << "!!!!!dual close!!!!!" << std::endl;	
-		//}
-		this->os << this->shared_from_this() << "handl close called." << std::endl;
+		this->os << this << "handl close called." << std::endl;
 		this->sock.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
 		this->sock.close();
 		this->on_close_func(this->shared_from_this());
 	}
 
 	boost::asio::ip::tcp::socket sock;
-	OnReceivedFunc on_receive_func;
+	OnReceivedFunc on_received_func;
 	OnClosedFunc on_close_func;
 	ByteArray part_of_array;
 	ByteArray received_byte_array;
 	std::deque<ByteArray> send_byte_array_queue;
 	SocketSessionHeader header;
 	ByteArray header_and_body_byte_array;
-	//boost::asio::strand on_send_strand;
 	std::ostream& os;
+	bool has_started;
 
 };
-
-inline auto CreateTestSocketSession(boost::asio::io_service& service) -> SocketSession::Pointer {
-	return SocketSession::Create(service, 128, 
-		[](Session::Pointer session, const ByteArray&)
-			{ std::cout << "on receive !!!" << std::endl; }, 
-		[](Session::Pointer){ std::cout << "on close !!!" << std::endl; }, 
-		std::cout);
-}
 
 }
 }
