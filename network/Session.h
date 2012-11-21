@@ -5,6 +5,7 @@
 #include <boost/function.hpp>
 #include <boost/asio.hpp>
 #include "NodeId.h"
+#include "ErrorCode.h"
 #include "../ByteArray.h"
 #include "../utility/Utility.h"
 
@@ -19,6 +20,7 @@ public:
 	using OnReceivedFunc = boost::function<void (Pointer, const ByteArray&)>;
 	using OnClosedFunc = boost::function<void (Pointer)>;
 	using OnSendFinishedFunc = boost::function<void (Pointer)>;
+	using OnFailedSendFunc = boost::function<void (const ErrorCode&)>;
 
 	auto GetNodeId() -> NodeId {
 		return DoGetNodeId();	
@@ -29,12 +31,13 @@ public:
 	}
 	
 	auto Send(const ByteArray& byte_array, 
-			OnSendFinishedFunc on_send_finished_func) -> void {
+			OnSendFinishedFunc on_send_finished_func,
+			OnFailedSendFunc on_failed_send_func) -> void {
 		/*
 		std::cout << "send:\n\"" << utility::ByteArray2String(byte_array) 
 			<< "\"" << std::endl;
 		*/
-		DoSend(byte_array, on_send_finished_func);		
+		DoSend(byte_array, on_send_finished_func, on_failed_send_func);		
 	}
  	
 	auto Close() -> void {
@@ -45,14 +48,10 @@ private:
 	virtual auto DoGetNodeId() -> NodeId = 0;
 	virtual auto DoStartReceive(OnReceivedFunc on_received_func) -> void = 0;
 	virtual auto DoSend(const ByteArray& byte_array, 
-		OnSendFinishedFunc on_send_finished_func) -> void = 0;
+		OnSendFinishedFunc on_send_finished_func,
+		OnFailedSendFunc on_failed_send_func) -> void = 0;
  	virtual auto DoClose() -> void = 0;
 };
-
-inline auto Send(Session::Pointer session, const ByteArray& byte_array) -> void {
-	session->Send(byte_array, [](Session::Pointer){});
-};
-
 
 }
 

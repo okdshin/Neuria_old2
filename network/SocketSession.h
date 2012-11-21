@@ -68,12 +68,13 @@ private: //over ridden
 	}
 
 	auto DoSend(const ByteArray& byte_array,
-			Session::OnSendFinishedFunc on_send_finished_func) -> void {
+			Session::OnSendFinishedFunc on_send_finished_func,
+			Session::OnFailedSendFunc on_failed_send_func) -> void {
 		assert(this->sock.is_open());
 		bool is_empty = this->send_byte_array_queue.empty();
 		this->send_byte_array_queue.push_back(byte_array);
 		if(is_empty) { //start new
-			this->HandlOnSend(on_send_finished_func);
+			this->HandlOnSend(on_send_finished_func, on_failed_send_func);
 		}
 	}
 	
@@ -215,7 +216,8 @@ private:
 	}
 
 
-	auto HandlOnSend(Session::OnSendFinishedFunc on_send_finished_func) -> void {
+	auto HandlOnSend(Session::OnSendFinishedFunc on_send_finished_func,
+			Session::OnFailedSendFunc on_failed_send_func) -> void {
 		const auto body_byte_array = send_byte_array_queue.front();
 		
 		const auto header = SocketSessionHeader(body_byte_array.size());
@@ -228,11 +230,6 @@ private:
 		std::copy(body_byte_array.begin(), body_byte_array.end(), 
 			std::back_inserter(header_and_body_byte_array));
 		
-		{
-			std::ofstream ofs("./log.txt");
-			ofs << "send:\"" << header_and_body_byte_array << "\"" << std::endl;
-		}
-		
 		boost::asio::async_write(
 			this->sock, 
 			boost::asio::buffer(this->header_and_body_byte_array),
@@ -240,19 +237,21 @@ private:
 				&SocketSession::OnSend,
 				shared_from_this(), 
 				on_send_finished_func,
+				on_failed_send_func,
 				boost::asio::placeholders::error
 			)
 		);
 	}
 
 	auto OnSend(Session::OnSendFinishedFunc on_send_finished_func, 
+			Session::OnFailedSendFunc on_failed_send_func,
 			const boost::system::error_code& error_code) -> void {
 		std::cout << "on send called." << std::endl;
 		if(!error_code){
 			if(!this->send_byte_array_queue.empty()){
 				this->send_byte_array_queue.pop_front();
 				if(!this->send_byte_array_queue.empty()){
-					this->HandlOnSend(on_send_finished_func);
+					this->HandlOnSend(on_send_finished_func, on_failed_send_func);
 				}
 				else{
 					on_send_finished_func(this->shared_from_this());
@@ -262,6 +261,7 @@ private:
 		else
 		{
 			this->os << "send failed. error code is "<< error_code.message() << std::endl;
+			on_failed_send_func(neuria::network::ErrorCode(error_code));
 			this->HandlClose();
 		}
 	}

@@ -51,6 +51,7 @@ inline auto Connect(Client::Pointer client,
 }
 
 //
+/*
 inline auto Communicate(Client::Pointer client, const NodeId& node_id, 
 		Client::OnFailedConnectFunc on_failed_connect_func, 
 		const ByteArray& byte_array, Session::OnReceivedFunc on_received_func,
@@ -59,7 +60,7 @@ inline auto Communicate(Client::Pointer client, const NodeId& node_id,
 		Client::OnConnectedFunc([byte_array, on_send_finished_func, on_received_func](
 				Session::Pointer session){ 
 			session->StartReceive(on_received_func);
-			session->Send(byte_array, on_send_finished_func); 
+			session->Send(byte_array, on_send_finished_func, on_failed_send_func); 
 		}), 
 		on_failed_connect_func,
 		Session::OnClosedFunc([](Session::Pointer){
@@ -84,7 +85,7 @@ inline auto Send(Client::Pointer client,
 		})
 	);				
 }
-
+*/
 }
 }
 

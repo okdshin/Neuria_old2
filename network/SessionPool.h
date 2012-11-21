@@ -69,19 +69,6 @@ private:
 	std::vector<Session::Pointer> sessions;
 };
 
-inline auto Broadcast(
-		SessionPool::Pointer session_pool, const ByteArray& byte_array, 
-		Session::OnSendFinishedFunc on_send_finished_func) -> void {	
-	if(!session_pool->IsEmpty()){
-		for(auto& session : *session_pool){
-			session->Send(byte_array, on_send_finished_func);
-		}
-	}
-	else{
-		std::cout << "no peer. broadcast failed." << std::endl;	
-	}
-}
-
 inline auto operator<<(std::ostream& os, SessionPool::Pointer pool) -> std::ostream& {
 	for(const auto& session : *pool){
 		os << session->GetNodeId() << " ";
