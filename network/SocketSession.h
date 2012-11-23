@@ -268,7 +268,7 @@ private:
 
 	auto HandlClose() -> void {
 		this->os << this << "handl close called." << std::endl;
-		this->sock.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+		//this->sock.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
 		this->sock.close();
 		this->on_close_func(this->shared_from_this());
 	}
