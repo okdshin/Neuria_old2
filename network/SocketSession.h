@@ -71,10 +71,58 @@ private: //over ridden
 			Session::OnSendFinishedFunc on_send_finished_func,
 			Session::OnFailedSendFunc on_failed_send_func) -> void {
 		assert(this->sock.is_open());
-		bool is_empty = this->send_byte_array_queue.empty();
 		this->send_byte_array_queue.push_back(byte_array);
-		if(is_empty) { //start new
+		if(this->send_byte_array_queue.size() == 1) { //start new
 			this->HandlOnSend(on_send_finished_func, on_failed_send_func);
+		}
+	}
+	
+	auto HandlOnSend(Session::OnSendFinishedFunc on_send_finished_func,
+			Session::OnFailedSendFunc on_failed_send_func) -> void {
+		const auto body_byte_array = send_byte_array_queue.front();
+		
+		const auto header = SocketSessionHeader(body_byte_array.size());
+		this->os << "send header:" << header << std::endl;
+		const auto header_byte_array = header.Serialize();
+		
+		this->header_and_body_byte_array.clear();
+		std::copy(header_byte_array.begin(), header_byte_array.end(), 
+			std::back_inserter(header_and_body_byte_array));
+		std::copy(body_byte_array.begin(), body_byte_array.end(), 
+			std::back_inserter(header_and_body_byte_array));
+		
+		boost::asio::async_write(
+			this->sock, 
+			boost::asio::buffer(this->header_and_body_byte_array),
+			boost::bind(
+				&SocketSession::OnSend,
+				shared_from_this(), 
+				on_send_finished_func,
+				on_failed_send_func,
+				boost::asio::placeholders::error
+			)
+		);
+	}
+
+	auto OnSend(Session::OnSendFinishedFunc on_send_finished_func, 
+			Session::OnFailedSendFunc on_failed_send_func,
+			const boost::system::error_code& error_code) -> void {
+		std::cout << "on sended called." << std::endl;
+		if(!error_code){
+			on_send_finished_func(this->shared_from_this());
+			if(!this->send_byte_array_queue.empty()){
+				this->send_byte_array_queue.pop_front();
+				if(!this->send_byte_array_queue.empty()){
+					this->HandlOnSend(on_send_finished_func, on_failed_send_func);
+				}
+			}
+		}
+		else
+		{
+			this->os << "send failed. error code is "
+				<< error_code.message() << std::endl;
+			on_failed_send_func(neuria::network::ErrorCode(error_code));
+			this->HandlClose();
 		}
 	}
 	
@@ -216,55 +264,6 @@ private:
 	}
 
 
-	auto HandlOnSend(Session::OnSendFinishedFunc on_send_finished_func,
-			Session::OnFailedSendFunc on_failed_send_func) -> void {
-		const auto body_byte_array = send_byte_array_queue.front();
-		
-		const auto header = SocketSessionHeader(body_byte_array.size());
-		std::cout << "send header:" << header << std::endl;
-		const auto header_byte_array = header.Serialize();
-		
-		this->header_and_body_byte_array.clear();
-		std::copy(header_byte_array.begin(), header_byte_array.end(), 
-			std::back_inserter(header_and_body_byte_array));
-		std::copy(body_byte_array.begin(), body_byte_array.end(), 
-			std::back_inserter(header_and_body_byte_array));
-		
-		boost::asio::async_write(
-			this->sock, 
-			boost::asio::buffer(this->header_and_body_byte_array),
-			boost::bind(
-				&SocketSession::OnSend,
-				shared_from_this(), 
-				on_send_finished_func,
-				on_failed_send_func,
-				boost::asio::placeholders::error
-			)
-		);
-	}
-
-	auto OnSend(Session::OnSendFinishedFunc on_send_finished_func, 
-			Session::OnFailedSendFunc on_failed_send_func,
-			const boost::system::error_code& error_code) -> void {
-		std::cout << "on send called." << std::endl;
-		if(!error_code){
-			if(!this->send_byte_array_queue.empty()){
-				this->send_byte_array_queue.pop_front();
-				if(!this->send_byte_array_queue.empty()){
-					this->HandlOnSend(on_send_finished_func, on_failed_send_func);
-				}
-				else{
-					on_send_finished_func(this->shared_from_this());
-				}
-			}
-		}
-		else
-		{
-			this->os << "send failed. error code is "<< error_code.message() << std::endl;
-			on_failed_send_func(neuria::network::ErrorCode(error_code));
-			this->HandlClose();
-		}
-	}
 
 	auto HandlClose() -> void {
 		this->os << this << "handl close called." << std::endl;
