@@ -127,7 +127,7 @@ private: //over ridden
 	}
 	
 	auto DoClose() -> void {
-		this->sock.get_io_service().post(
+		this->sock.get_io_service().dispatch(
 			boost::bind(&SocketSession::HandlClose, shared_from_this()));		
 	}
 
